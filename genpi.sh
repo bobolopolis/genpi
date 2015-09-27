@@ -25,6 +25,11 @@ ROOT_DIR="$(mktemp -d)" # Location where the SD card will be mounted.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 HOSTNAME="raspy" # Hostname for the image.
 SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
+KEYMAP="us" # The keymap to use for the console.
+
+# TODO Ensure we're running as root.
+
+# TODO Verify $SD doesn't have mounted partitions.
 
 # Partition device
 echo "Partitioning $SD"
@@ -73,6 +78,16 @@ mount $SD$SD_BOOT $ROOT_DIR/boot
 # Extract stage 3 to SD card
 echo "Extracting stage 3 tarball"
 tar xpvf $STAGE3 -C $ROOT_DIR > /dev/null
+sync
+
+# Extract Portage snapshot
+if [ -e "./portage-latest.tar.bz2" ]; then
+	echo "Latest Portage snapshot already downloaded, skipping"
+else
+	wget http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+fi
+echo "Extracting Portage snapshot"
+tar xjf portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
 
 # Place kernel, firmware, and modules
@@ -128,10 +143,26 @@ cp $ROOT_DIR/usr/share/zoneinfo/$TIMEZONE $ROOT_DIR/etc/localtime
 echo "$TIMEZONE" > $ROOT_DIR/etc/timezone
 
 # Set hostname
-echo "$HOSTNAME" > $ROOT_DIR/etc/hostname
+sed -i "/hostname=/c\hostname=\"$HOSTNAME\"" $ROOT_DIR/etc/conf.d/hostname
 
-# TODO Modify /etc/inittab
+# Comment out spawning agetty on TTYS0
+sed -i '/s0:12345/ s/^/#/' $ROOT_DIR/etc/inittab
 
+# Enable networking on boot
+ln -sf net.lo $ROOT_DIR/etc/init.d/net.eth0
+ln -sf /etc/init.d/net.eth0 $ROOT_DIR/etc/runlevels/default/net.eth0
+
+# Enable sshd on boot
+ln -sf /etc/init.d/sshd $ROOT_DIR/etc/runlevels/default/sshd
+
+# Remove hwclock from boot runlevel and add swclock
+rm $ROOT_DIR/etc/runlevels/boot/hwclock
+ln -sf /etc/init.d/swclock $ROOT_DIR/etc/runlevels/boot/swclock
+
+# Set console keymap
+sed -i "/keymap=/c\keymap=\"$KEYMAP\"" $ROOT_DIR/etc/conf.d/keymaps
+
+sync
 umount $SD$SD_BOOT
 umount $SD$SD_ROOT
 
