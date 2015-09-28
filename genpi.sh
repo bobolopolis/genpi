@@ -32,6 +32,7 @@ KEYMAP="us" # The keymap to use for the console.
 # TODO Verify $SD doesn't have mounted partitions.
 
 # Partition device
+# TODO Add options for setting partition sizes
 echo "Partitioning $SD"
 parted -s $SD mklabel msdos
 parted -s $SD mkpart primary fat32 4MiB 132MiB
@@ -55,6 +56,7 @@ else
 fi
 
 # Download stage 3 tarball
+# TODO Detect names automatically
 if [ $PI_VERSION -eq 1 ]; then
 	STAGE3_DIR="current-stage3-armv6j_hardfp"
 	STAGE3="stage3-armv6j_hardfp-20150730.tar.bz2"
@@ -145,7 +147,7 @@ echo "$TIMEZONE" > $ROOT_DIR/etc/timezone
 # Set hostname
 sed -i "/hostname=/c\hostname=\"$HOSTNAME\"" $ROOT_DIR/etc/conf.d/hostname
 
-# Comment out spawning agetty on TTYS0
+# Comment out spawning agetty on ttyS0
 sed -i '/s0:12345/ s/^/#/' $ROOT_DIR/etc/inittab
 
 # Enable networking on boot
@@ -160,7 +162,7 @@ rm $ROOT_DIR/etc/runlevels/boot/hwclock
 ln -sf /etc/init.d/swclock $ROOT_DIR/etc/runlevels/boot/swclock
 
 # Set console keymap
-sed -i "/keymap=/c\keymap=\"$KEYMAP\"" $ROOT_DIR/etc/conf.d/keymaps
+sed -i "s/keymap=\"us\"/keymap=\"$KEYMAP\"/" $ROOT_DIR/etc/conf.d/keymaps
 
 sync
 umount $SD$SD_BOOT
