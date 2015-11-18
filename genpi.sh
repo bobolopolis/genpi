@@ -14,18 +14,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# TODO Use a configuration file to set these parameters.
+
+# Set SD variables as needed for your workstation.
 SD="/dev/mmcblk0" # Set to base block device, such as "/dev/sdb".
 SD_BOOT="p1" # Set to boot partition suffix, such as "1".
 SD_SWAP="p2" # Set to swap partition suffix, such as "2".
 SD_ROOT="p3" # Set to root partition suffix, such as "3".
+
+# Set these variables to change the SD card partition layout. These are not
+# yet used.
+#BOOT_SIZE="128" # Size of the boot partition in MiB.
+#SWAP_SIZE="1024" # Size of the swap partition in MiB.
+#ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
+
+# Set these variables to customize the image.
 PI_VERSION=2 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
+HOSTNAME="raspy" # Hostname for the image.
+TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
+KEYMAP="us" # The keymap to use for the console.
+
+# Additional internal variables.
 STAGE3_DIR="" # Leave blank
 STAGE3="" # Leave blank
 ROOT_DIR="$(mktemp -d)" # Location where the SD card will be mounted.
-TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
-HOSTNAME="raspy" # Hostname for the image.
 SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
-KEYMAP="us" # The keymap to use for the console.
 
 # TODO Ensure we're running as root.
 
