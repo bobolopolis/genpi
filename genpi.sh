@@ -29,7 +29,7 @@ SD_ROOT="p3" # Set to root partition suffix, such as "3".
 #ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
 # Set these variables to customize the image.
-PI_VERSION=2 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
+PI_VERSION=1 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
 HOSTNAME="raspy" # Hostname for the image.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 KEYMAP="us" # The keymap to use for the console.
@@ -49,73 +49,72 @@ fi
 # TODO Verify $SD doesn't have mounted partitions.
 
 # Download stage 3 tarball
-# TODO Detect names automatically
-BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds/"
+BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds"
 if [ $PI_VERSION -eq 1 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv6j_hardfp.txt)
-	STAGE3_DATE=$(echo $STAGE3_RAW | cut -d ' ' -f 13 | cut -d '/' -f 1)
-	STAGE3_TARBALL=$(echo $STAGE3_DIR | cut -d ' ' -f 13 | cut -d '/' -f 2)
 elif [ $PI_VERSION -eq 2 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv7a_hardfp.txt)
-	STAGE3_DATE=$(echo $STAGE3_RAW | cut -d ' ' -f 13 | cut -d '/' -f 1)
-	STAGE3_TARBALL=$(echo $STAGE3_DIR | cut -d ' ' -f 13 | cut -d '/' -f 2)
 fi
+STAGE3_RAW=$(printf "%s" "$STAGE3_RAW" | tr '\n' ' ' | cut -d ' ' -f 13)
+STAGE3_DATE=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 1)
+STAGE3_TARBALL=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 2)
+
 if [ -e $STAGE3_TARBALL ]; then
-	echo "Stage 3 tarball already downloaded, skipping"
+	printf "Stage 3 tarball already downloaded, skipping\n"
 else
 	wget $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL
 fi
-
+exit 1
 # Download Portage snapshot
 if [ -e "./portage-latest.tar.bz2" ]; then
-	echo "Latest Portage snapshot already downloaded, skipping"
+	printf "Latest Portage snapshot already downloaded, skipping\n"
 else
 	wget http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
 fi
 
 # Clone firmware
 if [ -d "./firmware" ]; then
-	echo "Firmware already downloaded, skipping"
+	printf "Firmware already downloaded, skipping\n"
 else
-	echo "Downloading firmware"
+	printf "Downloading firmware\n"
 	git clone --depth 1 https://github.com/raspberrypi/firmware.git
 fi
 
 # Partition device
 # TODO Add options for setting partition sizes
-echo "Partitioning $SD"
+printf "Partitioning $SD\n"
 parted -s $SD mklabel msdos
 parted -s $SD mkpart primary fat32 4MiB 132MiB
 parted -s $SD mkpart primary 132MiB 1156MiB
 parted -s $SD mkpart primary ext2 1156MiB 100%
 
 # Format SD card
-echo "Formatting $SD$SD_BOOT"
+printf "Formatting $SD$SD_BOOT\n"
 mkfs.vfat $SD$SD_BOOT
-echo "Formatting $SD$SD_SWAP"
+printf "Formatting $SD$SD_SWAP\n"
 mkswap $SD$SD_SWAP
-echo "Formatting $SD$SD_ROOT"
+printf "Formatting $SD$SD_ROOT\n"
 mkfs.ext4 -q $SD$SD_ROOT
 
 # Mount SD card
-echo "Mounting $SD$SD_ROOT at $ROOT_DIR"
+printf "Mounting $SD$SD_ROOT at $ROOT_DIR\n"
 mount $SD$SD_ROOT $ROOT_DIR
 mkdir $ROOT_DIR/boot
-echo "Mounting $SD$SD_BOOT at $ROOT_DIR/boot"
+printf "Mounting $SD$SD_BOOT at $ROOT_DIR/boot\n"
 mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
-echo "Extracting stage 3 tarball"
+printf "Extracting stage 3 tarball\n"
 tar xpvf $STAGE3 -C $ROOT_DIR > /dev/null
 sync
 
 # Extract Portage snapshot
-echo "Extracting Portage snapshot"
+printf "Extracting Portage snapshot\n"
 tar xjf portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
 
 # Place kernel, firmware, and modules
-echo "Adding kernel to image"
+printf "Adding kernel to image\n"
 cp -r firmware/boot/* $ROOT_DIR/boot
 cp -r firmware/modules $ROOT_DIR/lib/
 #echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline rootwait" > $ROOT_DIR/boot/cmdline.txt
@@ -130,30 +129,30 @@ printf "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
 printf "rootwait/n" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
-echo 'INPUT_DEVICES="evdev"' >> $ROOT_DIR/etc/portage/make.conf
-echo 'LINGUAS="en_US en"' >> $ROOT_DIR/etc/portage/make.conf
-echo 'MAKEOPTS="-j5"' >> $ROOT_DIR/etc/portage/make.conf
-echo 'PORTAGE_NICENESS="18"' >> $ROOT_DIR/etc/portage/make.conf
+printf "INPUT_DEVICES=\"evdev\"\n" >> $ROOT_DIR/etc/portage/make.conf
+printf "LINGUAS=\"en_US en\"\n" >> $ROOT_DIR/etc/portage/make.conf
+printf "MAKEOPTS=\"-j5\"\n" >> $ROOT_DIR/etc/portage/make.conf
+printf "PORTAGE_NICENESS=\"18\"\n" >> $ROOT_DIR/etc/portage/make.conf
 
 # Create repos.conf
 mkdir -p $ROOT_DIR/etc/portage/repos.conf
-echo "[DEFAULT]" > $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "main-repo = gentoo" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "[gentoo]" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "location = /usr/portage" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "sync-type = rsync" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "sync-uri = $SYNC_URI" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-echo "auto-sync = yes" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "[DEFAULT]\n" > $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "main-repo = gentoo\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "[gentoo]\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "location = /usr/portage\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "sync-type = rsync\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "sync-uri = $SYNC_URI\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "auto-sync = yes\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
 
 # Adjust /etc/fstab
 sed -i '/dev/ s/^/#/' $ROOT_DIR/etc/fstab
-echo "$SD$SD_BOOT	/boot	vfat	noatime	1 2" >> $ROOT_DIR/etc/fstab
-echo "$SD$SD_SWAP	none	swap	sw	0 0" >> $ROOT_DIR/etc/fstab
-echo "$SD$SD_ROOT	/	ext4	noatime	0 1" >> $ROOT_DIR/etc/fstab
+printf "$SD$SD_BOOT	/boot	vfat	noatime	1 2\n" >> $ROOT_DIR/etc/fstab
+printf "$SD$SD_SWAP	none	swap	sw	0 0\n" >> $ROOT_DIR/etc/fstab
+printf "$SD$SD_ROOT	/	ext4	noatime	0 1\n" >> $ROOT_DIR/etc/fstab
 
 # Set root password
-echo "Setting the root password"
+printf "Setting the root password\n"
 RS=1
 while [ $RS -ne 0 ]; do
 	PASSWORD="$(openssl passwd -1)"
@@ -162,9 +161,9 @@ done
 sed -i "/root/c\root:$PASSWORD:10770:0:::::" $ROOT_DIR/etc/shadow
 
 # Set timezone
-echo "Setting timezone to $TIMEZONE"
+printf "Setting timezone to $TIMEZONE\n"
 cp $ROOT_DIR/usr/share/zoneinfo/$TIMEZONE $ROOT_DIR/etc/localtime
-echo "$TIMEZONE" > $ROOT_DIR/etc/timezone
+printf "$TIMEZONE\n" > $ROOT_DIR/etc/timezone
 
 # Set hostname
 sed -i "/hostname=/c\hostname=\"$HOSTNAME\"" $ROOT_DIR/etc/conf.d/hostname
