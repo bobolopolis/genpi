@@ -35,8 +35,6 @@ TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 KEYMAP="us" # The keymap to use for the console.
 
 # Additional internal variables.
-STAGE3_DIR="" # Leave blank
-STAGE3="" # Leave blank
 ROOT_DIR="$(mktemp -d)" # Location where the SD card will be mounted.
 SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
 
@@ -46,7 +44,12 @@ if [ $(id -u) -ne 0 ]; then
 	exit 1
 fi
 
-# TODO Verify $SD doesn't have mounted partitions.
+# Verify the SD card does not have mounted partitions.
+if [ -n "$(mount | grep "$SD")" ]; then
+	printf "Error: The specified block device, $SD, has mounted "
+	printf "partitions.\n       Unmount them and try again.\n"
+	exit 1
+fi
 
 # Download stage 3 tarball
 BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds"
@@ -105,7 +108,7 @@ mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
 printf "Extracting stage 3 tarball\n"
-tar xpvf $STAGE3 -C $ROOT_DIR > /dev/null
+tar xpvf $STAGE3_TARBALL -C $ROOT_DIR > /dev/null
 sync
 
 # Extract Portage snapshot
