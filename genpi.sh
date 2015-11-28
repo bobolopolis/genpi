@@ -48,6 +48,39 @@ fi
 
 # TODO Verify $SD doesn't have mounted partitions.
 
+# Download stage 3 tarball
+# TODO Detect names automatically
+BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds/"
+if [ $PI_VERSION -eq 1 ]; then
+	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv6j_hardfp.txt)
+	STAGE3_DATE=$(echo $STAGE3_RAW | cut -d ' ' -f 13 | cut -d '/' -f 1)
+	STAGE3_TARBALL=$(echo $STAGE3_DIR | cut -d ' ' -f 13 | cut -d '/' -f 2)
+elif [ $PI_VERSION -eq 2 ]; then
+	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv7a_hardfp.txt)
+	STAGE3_DATE=$(echo $STAGE3_RAW | cut -d ' ' -f 13 | cut -d '/' -f 1)
+	STAGE3_TARBALL=$(echo $STAGE3_DIR | cut -d ' ' -f 13 | cut -d '/' -f 2)
+fi
+if [ -e $STAGE3_TARBALL ]; then
+	echo "Stage 3 tarball already downloaded, skipping"
+else
+	wget $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL
+fi
+
+# Download Portage snapshot
+if [ -e "./portage-latest.tar.bz2" ]; then
+	echo "Latest Portage snapshot already downloaded, skipping"
+else
+	wget http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+fi
+
+# Clone firmware
+if [ -d "./firmware" ]; then
+	echo "Firmware already downloaded, skipping"
+else
+	echo "Downloading firmware"
+	git clone --depth 1 https://github.com/raspberrypi/firmware.git
+fi
+
 # Partition device
 # TODO Add options for setting partition sizes
 echo "Partitioning $SD"
@@ -64,29 +97,6 @@ mkswap $SD$SD_SWAP
 echo "Formatting $SD$SD_ROOT"
 mkfs.ext4 -q $SD$SD_ROOT
 
-# Clone firmware
-if [ -d "./firmware" ]; then
-	echo "Firmware already downloaded, skipping"
-else
-	echo "Downloading firmware"
-	git clone --depth 1 https://github.com/raspberrypi/firmware.git
-fi
-
-# Download stage 3 tarball
-# TODO Detect names automatically
-if [ $PI_VERSION -eq 1 ]; then
-	STAGE3_DIR="current-stage3-armv6j_hardfp"
-	STAGE3="stage3-armv6j_hardfp-20150730.tar.bz2"
-elif [ $PI_VERSION -eq 2 ]; then
-	STAGE3_DIR="current-stage3-armv7a_hardfp"
-	STAGE3="stage3-armv7a_hardfp-20150730.tar.bz2"
-fi
-if [ -e $STAGE3 ]; then
-	echo "Stage 3 tarball already downloaded, skipping"
-else
-	wget http://distfiles.gentoo.org/releases/arm/autobuilds/${STAGE3_DIR}/${STAGE3}
-fi
-
 # Mount SD card
 echo "Mounting $SD$SD_ROOT at $ROOT_DIR"
 mount $SD$SD_ROOT $ROOT_DIR
@@ -100,11 +110,6 @@ tar xpvf $STAGE3 -C $ROOT_DIR > /dev/null
 sync
 
 # Extract Portage snapshot
-if [ -e "./portage-latest.tar.bz2" ]; then
-	echo "Latest Portage snapshot already downloaded, skipping"
-else
-	wget http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
-fi
 echo "Extracting Portage snapshot"
 tar xjf portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
