@@ -67,7 +67,7 @@ if [ -e $STAGE3_TARBALL ]; then
 else
 	wget $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL
 fi
-exit 1
+
 # Download Portage snapshot
 if [ -e "./portage-latest.tar.bz2" ]; then
 	printf "Latest Portage snapshot already downloaded, skipping\n"
@@ -108,12 +108,12 @@ mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
 printf "Extracting stage 3 tarball\n"
-tar xpvf $STAGE3_TARBALL -C $ROOT_DIR > /dev/null
+tar xjpf $STAGE3_TARBALL -C $ROOT_DIR --xattrs > /dev/null
 sync
 
 # Extract Portage snapshot
 printf "Extracting Portage snapshot\n"
-tar xjf portage-latest.tar.bz2 -C $ROOT_DIR/usr
+tar xjpf portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
 
 # Place kernel, firmware, and modules
