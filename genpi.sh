@@ -40,7 +40,11 @@ STAGE3="" # Leave blank
 ROOT_DIR="$(mktemp -d)" # Location where the SD card will be mounted.
 SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
 
-# TODO Ensure we're running as root.
+# Ensure we're running as root.
+if [ $(id -u) -ne 0 ]; then
+	printf "Error: This script must be run as root.\n"
+	exit 1
+fi
 
 # TODO Verify $SD doesn't have mounted partitions.
 
