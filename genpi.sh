@@ -22,11 +22,10 @@ SD_BOOT="p1" # Set to boot partition suffix, such as "1".
 SD_SWAP="p2" # Set to swap partition suffix, such as "2".
 SD_ROOT="p3" # Set to root partition suffix, such as "3".
 
-# Set these variables to change the SD card partition layout. These are not
-# yet used.
-#BOOT_SIZE="128" # Size of the boot partition in MiB.
-#SWAP_SIZE="1024" # Size of the swap partition in MiB.
-#ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
+# Set these variables to change the SD card partition layout.
+BOOT_SIZE="128" # Size of the boot partition in MiB.
+SWAP_SIZE="1024" # Size of the swap partition in MiB.
+ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
 # Set these variables to customize the image.
 PI_VERSION=1 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
@@ -34,9 +33,22 @@ HOSTNAME="raspy" # Hostname for the image.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 KEYMAP="us" # The keymap to use for the console.
 
+###############################################################################
 # Additional internal variables.
 ROOT_DIR="$(mktemp -d)" # Location where the SD card will be mounted.
 SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
+
+###############################################################################
+# TODO Develop usage summary.
+#print_usage() {
+#	printf "%s\n" "Usage summary:"
+#	printf "\t%s\n" "-c <config>"
+#	printf "\t\t%s\n" "Specify a configuration file to use."
+#	printf "\t%s\n" "-d"
+#	printf "\t\t%s\n" "Download new copies of all files and update the cache."
+#	printf "\t%s\n" "-z"
+#	printf "\t\t%s\n" "Write zeros to the SD card before formatting."
+#}
 
 # Ensure we're running as root.
 if [ $(id -u) -ne 0 ]; then
@@ -83,13 +95,23 @@ else
 	git clone --depth 1 https://github.com/raspberrypi/firmware.git
 fi
 
-# Partition device
-# TODO Add options for setting partition sizes
+# Calculate partition sizes
+BOOT_START=2 # Start at
+BOOT_END=$(expr 4 + $BOOT_SIZE)
+SWAP_START=$BOOT_END
+SWAP_END=$(expr $SWAP_START + $SWAP_SIZE)
+ROOT_START=$SWAP_END
+if [ "$ROOT_SIZE" = "100%" ]; then
+	ROOT_END="100%"
+else
+	ROOT_END="$(expr $ROOT_START + $ROOT_SIZE)MiB"
+fi
+
 printf "Partitioning $SD\n"
 parted -s $SD mklabel msdos
-parted -s $SD mkpart primary fat32 4MiB 132MiB
-parted -s $SD mkpart primary 132MiB 1156MiB
-parted -s $SD mkpart primary ext2 1156MiB 100%
+parted -s $SD mkpart primary fat32 ${BOOT_START}MiB ${BOOT_END}MiB
+parted -s $SD mkpart primary ${SWAP_START}MiB ${SWAP_END}MiB
+parted -s $SD mkpart primary ${ROOT_START}MiB $ROOT_END
 
 # Format SD card
 printf "Formatting $SD$SD_BOOT\n"
@@ -120,7 +142,9 @@ sync
 printf "Adding kernel to image\n"
 cp -r firmware/boot/* $ROOT_DIR/boot
 cp -r firmware/modules $ROOT_DIR/lib/
-#echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline rootwait" > $ROOT_DIR/boot/cmdline.txt
+#echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200
+#console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline
+#rootwait" > $ROOT_DIR/boot/cmdline.txt
 touch $ROOT_DIR/boot/cmdline.txt
 printf "dwc_otg.lpm_enable=0 " >> $ROOT_DIR/boot/cmdline.txt
 printf "console=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
@@ -155,7 +179,7 @@ printf "$SD$SD_SWAP	none	swap	sw	0 0\n" >> $ROOT_DIR/etc/fstab
 printf "$SD$SD_ROOT	/	ext4	noatime	0 1\n" >> $ROOT_DIR/etc/fstab
 
 # Set root password
-printf "Setting the root password\n"
+printf "Enter the desired root password\n"
 RS=1
 while [ $RS -ne 0 ]; do
 	PASSWORD="$(openssl passwd -1)"
