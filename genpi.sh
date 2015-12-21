@@ -63,6 +63,7 @@ if [ -n "$(mount | grep "$SD")" ]; then
 	exit 1
 fi
 
+mkdir -p cache
 # Download stage 3 tarball
 BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds"
 if [ $PI_VERSION -eq 1 ]; then
@@ -74,25 +75,25 @@ STAGE3_RAW=$(printf "%s" "$STAGE3_RAW" | tr '\n' ' ' | cut -d ' ' -f 13)
 STAGE3_DATE=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 1)
 STAGE3_TARBALL=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 2)
 
-if [ -e $STAGE3_TARBALL ]; then
+if [ -e "./cache/$STAGE3_TARBALL" ]; then
 	printf "Stage 3 tarball already downloaded, skipping\n"
 else
-	wget $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL
+	wget -P ./cache/ $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL cache/
 fi
 
 # Download Portage snapshot
-if [ -e "./portage-latest.tar.bz2" ]; then
+if [ -e "./cache/portage-latest.tar.bz2" ]; then
 	printf "Latest Portage snapshot already downloaded, skipping\n"
 else
-	wget http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+	wget -P ./cache/ http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
 fi
 
 # Clone firmware
-if [ -d "./firmware" ]; then
+if [ -d "./cache/firmware" ]; then
 	printf "Firmware already downloaded, skipping\n"
 else
 	printf "Downloading firmware\n"
-	git clone --depth 1 https://github.com/raspberrypi/firmware.git
+	git clone --depth 1 https://github.com/raspberrypi/firmware.git cache/firmware
 fi
 
 # Calculate partition sizes
@@ -130,18 +131,18 @@ mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
 printf "Extracting stage 3 tarball\n"
-tar xjpf $STAGE3_TARBALL -C $ROOT_DIR --xattrs > /dev/null
+tar xjpf cache/$STAGE3_TARBALL -C $ROOT_DIR --xattrs > /dev/null
 sync
 
 # Extract Portage snapshot
 printf "Extracting Portage snapshot\n"
-tar xjpf portage-latest.tar.bz2 -C $ROOT_DIR/usr
+tar xjpf cache/portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
 
 # Place kernel, firmware, and modules
 printf "Adding kernel to image\n"
-cp -r firmware/boot/* $ROOT_DIR/boot
-cp -r firmware/modules $ROOT_DIR/lib/
+cp -r cache/firmware/boot/* $ROOT_DIR/boot
+cp -r cache/firmware/modules $ROOT_DIR/lib/
 #echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200
 #console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline
 #rootwait" > $ROOT_DIR/boot/cmdline.txt
