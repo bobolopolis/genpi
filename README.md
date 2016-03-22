@@ -14,7 +14,12 @@ utility, the following variables should be customized prior to use:
 	SWAP_SIZE="1024" # Size of the swap partition in MiB.
 	ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
-	# Set these variables to customize the image.
+	# Set the version of the Raspberry Pi hardware.
+	#   1: Creates an armv6j_hardfp image for the original Raspberry Pi
+	#   2: Creates an armv7a_hardfp image for the Raspberry Pi 2
+	#   3: Because there is not yet a stage 3 tarball for the Raspberry Pi 3, this
+	#      creates the same armv7a_hardfp image as the Raspberry Pi 2. Hopefully
+	#      an armv8a stage 3 tarball will be released in the near future.
 	PI_VERSION=1 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
 	HOSTNAME="raspy" # Hostname for the image.
 	TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
@@ -22,3 +27,4 @@ utility, the following variables should be customized prior to use:
 Once these parameters are set, simply run the script as root. When creating the
 image, a three partition setup is assumed. The SD card will contain a boot
 partition, a swap partition, and a root partition.
+
