@@ -28,7 +28,14 @@ SWAP_SIZE="1024" # Size of the swap partition in MiB.
 ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
 # Set these variables to customize the image.
-PI_VERSION=1 # Set to 1 for the original Raspberry Pi, 2 for the Raspberry Pi 2
+
+# Set the version of the Raspberry Pi hardware.
+#   1: Creates an armv6j_hardfp image for the original Raspberry Pi
+#   2: Creates an armv7a_hardfp image for the Raspberry Pi 2
+#   3: Because there is not yet a stage 3 tarball for the Raspberry Pi 3, this
+#      creates the same armv7a_hardfp image as the Raspberry Pi 2. Hopefully
+#      an armv8a stage 3 tarball will be released in the near future.
+PI_VERSION=1
 HOSTNAME="raspy" # Hostname for the image.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 KEYMAP="us" # The keymap to use for the console.
@@ -68,7 +75,7 @@ mkdir -p cache
 BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds"
 if [ $PI_VERSION -eq 1 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv6j_hardfp.txt)
-elif [ $PI_VERSION -eq 2 ]; then
+elif [ $PI_VERSION -eq 2 ] || [ $PI_VERSION -eq 3 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv7a_hardfp.txt)
 fi
 STAGE3_RAW=$(printf "%s" "$STAGE3_RAW" | tr '\n' ' ' | cut -d ' ' -f 13)
@@ -218,3 +225,4 @@ umount $SD$SD_BOOT
 umount $SD$SD_ROOT
 
 rm -r $ROOT_DIR
+
