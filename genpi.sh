@@ -63,6 +63,14 @@ if [ $(id -u) -ne 0 ]; then
 	exit 1
 fi
 
+# Verify mkpasswd is installed.
+if [ ! $(command -v mkpasswd) ]; then
+	printf "%s\n" "Error: The mkpasswd utility is not installed. Please"
+	printf "%s\n" "install it and try again. In many distributions, it"
+	printf "%s\n" "is part of the whois package."
+	exit 1
+fi
+
 # Verify the SD card does not have mounted partitions.
 if [ -n "$(mount | grep "$SD")" ]; then
 	printf "Error: The specified block device, $SD, has mounted "
@@ -161,7 +169,7 @@ printf "console=tty1 " >> $ROOT_DIR/boot/cmdline.txt
 printf "root=%s " "$SD$SD_ROOT" >> $ROOT_DIR/boot/cmdline.txt
 printf "rootfstype=ext4 " >> $ROOT_DIR/boot/cmdline.txt
 printf "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
-printf "rootwait/n" >> $ROOT_DIR/boot/cmdline.txt
+printf "rootwait\n" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
 printf "INPUT_DEVICES=\"evdev\"\n" >> $ROOT_DIR/etc/portage/make.conf
@@ -190,7 +198,7 @@ printf "$SD$SD_ROOT	/	ext4	noatime	0 1\n" >> $ROOT_DIR/etc/fstab
 printf "Enter the desired root password\n"
 RS=1
 while [ $RS -ne 0 ]; do
-	PASSWORD="$(openssl passwd -1)"
+	PASSWORD="$(mkpasswd -m sha-512 -R 50000)"
 	RS=$?
 done
 sed -i "/root/c\root:$PASSWORD:10770:0:::::" $ROOT_DIR/etc/shadow
@@ -225,4 +233,3 @@ umount $SD$SD_BOOT
 umount $SD$SD_ROOT
 
 rm -r $ROOT_DIR
-
