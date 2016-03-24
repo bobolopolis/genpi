@@ -28,3 +28,13 @@ Once these parameters are set, simply run the script as root. When creating the
 image, a three partition setup is assumed. The SD card will contain a boot
 partition, a swap partition, and a root partition.
 
+The script will create a cache directory to store the files it downloads to
+create the image. If the necessary files exist in the cache directory, they
+will not be downloaded again. The following files are cached:
+ * portage snapshot
+ * stage 3 tarball
+ * Raspberry Pi firmware repository
+
+If the cache is stale, simply delete it and rerun the script:
+
+	$ sudo rm -rf ./cache
