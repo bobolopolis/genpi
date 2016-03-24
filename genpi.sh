@@ -59,7 +59,7 @@ SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
 
 # Ensure we're running as root.
 if [ $(id -u) -ne 0 ]; then
-	printf "Error: This script must be run as root.\n"
+	printf "%s\n" "Error: This script must be run as root."
 	exit 1
 fi
 
@@ -73,8 +73,8 @@ fi
 
 # Verify the SD card does not have mounted partitions.
 if [ -n "$(mount | grep "$SD")" ]; then
-	printf "Error: The specified block device, $SD, has mounted "
-	printf "partitions.\n       Unmount them and try again.\n"
+	printf "%s" "Error: The specified block device, $SD, has mounted "
+	printf "%s\n%s\n" "partitions." "       Unmount them and try again."
 	exit 1
 fi
 
@@ -91,23 +91,23 @@ STAGE3_DATE=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 1)
 STAGE3_TARBALL=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 2)
 
 if [ -e "./cache/$STAGE3_TARBALL" ]; then
-	printf "Stage 3 tarball already downloaded, skipping\n"
+	printf "%s\n" "Stage 3 tarball already downloaded, skipping"
 else
 	wget -P ./cache/ $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL cache/
 fi
 
 # Download Portage snapshot
 if [ -e "./cache/portage-latest.tar.bz2" ]; then
-	printf "Latest Portage snapshot already downloaded, skipping\n"
+	printf "%s\n" "Latest Portage snapshot already downloaded, skipping"
 else
 	wget -P ./cache/ http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
 fi
 
 # Clone firmware
 if [ -d "./cache/firmware" ]; then
-	printf "Firmware already downloaded, skipping\n"
+	printf "%s\n" "Firmware already downloaded, skipping"
 else
-	printf "Downloading firmware\n"
+	printf "%s\n" "Downloading firmware"
 	git clone --depth 1 https://github.com/raspberrypi/firmware.git cache/firmware
 fi
 
@@ -123,79 +123,78 @@ else
 	ROOT_END="$(expr $ROOT_START + $ROOT_SIZE)MiB"
 fi
 
-printf "Partitioning $SD\n"
+printf "%s\n" "Partitioning $SD"
 parted -s $SD mklabel msdos
 parted -s $SD mkpart primary fat32 ${BOOT_START}MiB ${BOOT_END}MiB
 parted -s $SD mkpart primary ${SWAP_START}MiB ${SWAP_END}MiB
 parted -s $SD mkpart primary ${ROOT_START}MiB $ROOT_END
 
 # Format SD card
-printf "Formatting $SD$SD_BOOT\n"
+printf "%s\n" "Formatting $SD$SD_BOOT"
 mkfs.vfat $SD$SD_BOOT
-printf "Formatting $SD$SD_SWAP\n"
+printf "%s\n" "Formatting $SD$SD_SWAP"
 mkswap $SD$SD_SWAP
-printf "Formatting $SD$SD_ROOT\n"
+printf "%s\n" "Formatting $SD$SD_ROOT"
 mkfs.ext4 -q $SD$SD_ROOT
 
 # Mount SD card
-printf "Mounting $SD$SD_ROOT at $ROOT_DIR\n"
+printf "%s\n" "Mounting $SD$SD_ROOT at $ROOT_DIR"
 mount $SD$SD_ROOT $ROOT_DIR
 mkdir $ROOT_DIR/boot
-printf "Mounting $SD$SD_BOOT at $ROOT_DIR/boot\n"
+printf "%s\n" "Mounting $SD$SD_BOOT at $ROOT_DIR/boot"
 mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
-printf "Extracting stage 3 tarball\n"
+printf "%s\n" "Extracting stage 3 tarball"
 tar xjpf cache/$STAGE3_TARBALL -C $ROOT_DIR --xattrs > /dev/null
 sync
 
 # Extract Portage snapshot
-printf "Extracting Portage snapshot\n"
+printf "%s\n" "Extracting Portage snapshot"
 tar xjpf cache/portage-latest.tar.bz2 -C $ROOT_DIR/usr
 sync
 
 # Place kernel, firmware, and modules
-printf "Adding kernel to image\n"
+printf "%s\n" "Adding kernel to image"
 cp -r cache/firmware/boot/* $ROOT_DIR/boot
 cp -r cache/firmware/modules $ROOT_DIR/lib/
 #echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200
 #console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline
 #rootwait" > $ROOT_DIR/boot/cmdline.txt
 touch $ROOT_DIR/boot/cmdline.txt
-printf "dwc_otg.lpm_enable=0 " >> $ROOT_DIR/boot/cmdline.txt
-printf "console=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
-printf "kgdboc=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
-printf "console=tty1 " >> $ROOT_DIR/boot/cmdline.txt
-printf "root=%s " "$SD$SD_ROOT" >> $ROOT_DIR/boot/cmdline.txt
-printf "rootfstype=ext4 " >> $ROOT_DIR/boot/cmdline.txt
-printf "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
-printf "rootwait\n" >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "dwc_otg.lpm_enable=0 " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "console=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "kgdboc=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "console=tty1 " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "root=%s " "$SD$SD_ROOT" >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "rootfstype=ext4 " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
+printf "%s\n" "rootwait" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
-printf "INPUT_DEVICES=\"evdev\"\n" >> $ROOT_DIR/etc/portage/make.conf
-printf "LINGUAS=\"en_US en\"\n" >> $ROOT_DIR/etc/portage/make.conf
-printf "MAKEOPTS=\"-j5\"\n" >> $ROOT_DIR/etc/portage/make.conf
-printf "PORTAGE_NICENESS=\"18\"\n" >> $ROOT_DIR/etc/portage/make.conf
+printf "%s\n" "INPUT_DEVICES=\"evdev\"" >> $ROOT_DIR/etc/portage/make.conf
+printf "%s\n" "LINGUAS=\"en_US en\"" >> $ROOT_DIR/etc/portage/make.conf
+printf "%s\n" "MAKEOPTS=\"-j5\"" >> $ROOT_DIR/etc/portage/make.conf
+printf "%s\n" "PORTAGE_NICENESS=\"18\"" >> $ROOT_DIR/etc/portage/make.conf
 
 # Create repos.conf
 mkdir -p $ROOT_DIR/etc/portage/repos.conf
-printf "[DEFAULT]\n" > $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "main-repo = gentoo\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "[gentoo]\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "location = /usr/portage\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "sync-type = rsync\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "sync-uri = $SYNC_URI\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
-printf "auto-sync = yes\n" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "[DEFAULT]" > $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n\n" "main-repo = gentoo" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "[gentoo]" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "location = /usr/portage" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "sync-type = rsync" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "sync-uri = $SYNC_URI" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
+printf "%s\n" "auto-sync = yes" >> $ROOT_DIR/etc/portage/repos.conf/gentoo.conf
 
 # Adjust /etc/fstab
 sed -i '/dev/ s/^/#/' $ROOT_DIR/etc/fstab
-printf "$SD$SD_BOOT	/boot	vfat	noatime	1 2\n" >> $ROOT_DIR/etc/fstab
-printf "$SD$SD_SWAP	none	swap	sw	0 0\n" >> $ROOT_DIR/etc/fstab
-printf "$SD$SD_ROOT	/	ext4	noatime	0 1\n" >> $ROOT_DIR/etc/fstab
+printf "%s\n" "$SD$SD_BOOT	/boot	vfat	noatime	1 2" >> $ROOT_DIR/etc/fstab
+printf "%s\n" "$SD$SD_SWAP	none	swap	sw	0 0" >> $ROOT_DIR/etc/fstab
+printf "%s\n" "$SD$SD_ROOT	/	ext4	noatime	0 1" >> $ROOT_DIR/etc/fstab
 
 # Set root password
-printf "Enter the desired root password\n"
+printf "%s\n" "Enter the desired root password"
 RS=1
 while [ $RS -ne 0 ]; do
 	PASSWORD="$(mkpasswd -m sha-512 -R 50000)"
@@ -204,9 +203,9 @@ done
 sed -i "/root/c\root:$PASSWORD:10770:0:::::" $ROOT_DIR/etc/shadow
 
 # Set timezone
-printf "Setting timezone to $TIMEZONE\n"
+printf "%s\n" "Setting timezone to $TIMEZONE"
 cp $ROOT_DIR/usr/share/zoneinfo/$TIMEZONE $ROOT_DIR/etc/localtime
-printf "$TIMEZONE\n" > $ROOT_DIR/etc/timezone
+printf "%s\n" "$TIMEZONE" > $ROOT_DIR/etc/timezone
 
 # Set hostname
 sed -i "/hostname=/c\hostname=\"$HOSTNAME\"" $ROOT_DIR/etc/conf.d/hostname
