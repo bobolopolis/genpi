@@ -172,11 +172,9 @@ printf "%s" "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s\n" "rootwait" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
-
 if [ $PI_VERSION -eq 1 ]; then
 	NEW_CFLAGS="-O2 -pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard"
 elif [ $PI_VERSION -eq 2 ] || [ $PI_VERSION -eq 3 ]; then
-	#sed -i "s/CFLAGS=.*/CFLAGS=\"-O2 -pipe -march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard\""
 	NEW_CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 elif [ $PI_VERSION -eq 3 ]; then
 	#NEW_CFLAGS="-O2 -pipe -march=armv8-a -mtune=cortex-a53 -mfpu=neon-vfpv4 -mfloat-abi=hard"
@@ -184,7 +182,7 @@ elif [ $PI_VERSION -eq 3 ]; then
 	# stage 3 is available, this can be updated.
 	NEW_CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 fi
-sed -i "s/CFLAGS=.*/${NEW_CFLAGS}/"
+sed -i "s/CFLAGS=.*/${NEW_CFLAGS}/" $ROOT_DIR/etc/portage/make.conf
 
 printf "%s\n" "INPUT_DEVICES=\"evdev\"" >> $ROOT_DIR/etc/portage/make.conf
 printf "%s\n" "LINGUAS=\"en_US en\"" >> $ROOT_DIR/etc/portage/make.conf
