@@ -146,7 +146,7 @@ mount $SD$SD_BOOT $ROOT_DIR/boot
 
 # Extract stage 3 to SD card
 printf "%s\n" "Extracting stage 3 tarball"
-tar xjpf cache/$STAGE3_TARBALL -C $ROOT_DIR --xattrs > /dev/null
+tar xjpf cache/$STAGE3_TARBALL --xattrs -C $ROOT_DIR --xattrs > /dev/null
 sync
 
 # Extract Portage snapshot
