@@ -28,10 +28,10 @@ SWAP_SIZE="1024" # Size of the swap partition in MiB.
 ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
 # Set the version of the Raspberry Pi hardware.
-#   0: Creates an image for the Raspberry Pi Zero.
-#   1: Creates an image for the original Raspberry Pi.
-#   2: Creates an image for the Raspberry Pi 2
-#   3: Creates an image for the Raspberry Pi 3.
+#   0: Create an image for the Raspberry Pi Zero.
+#   1: Create an image for the original Raspberry Pi.
+#   2: Create an image for the Raspberry Pi 2
+#   3: Create an image for the Raspberry Pi 3.
 PI_VERSION=3
 HOSTNAME="raspy" # Hostname for the image.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
