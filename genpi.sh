@@ -27,18 +27,17 @@ BOOT_SIZE="128" # Size of the boot partition in MiB.
 SWAP_SIZE="1024" # Size of the swap partition in MiB.
 ROOT_SIZE="100%" # Size of the root partition, either in MiB or "100%".
 
-# Set these variables to customize the image.
-
 # Set the version of the Raspberry Pi hardware.
-#   1: Creates an armv6j_hardfp image for the original Raspberry Pi
-#   2: Creates an armv7a_hardfp image for the Raspberry Pi 2
-#   3: Because there is not yet a stage 3 tarball for the Raspberry Pi 3, this
-#      creates the same armv7a_hardfp image as the Raspberry Pi 2. Hopefully
-#      an armv8a stage 3 tarball will be released in the near future.
-PI_VERSION=1
+#   0: Creates an image for the Raspberry Pi Zero.
+#   1: Creates an image for the original Raspberry Pi.
+#   2: Creates an image for the Raspberry Pi 2
+#   3: Creates an image for the Raspberry Pi 3.
+PI_VERSION=3
 HOSTNAME="raspy" # Hostname for the image.
 TIMEZONE="America/Los_Angeles" # Timezone to set in the image.
 KEYMAP="us" # The keymap to use for the console.
+LINGUAS="en en_US" # LINGUAS value for make.conf
+L10N="en en-US" # L10N value for make.conf
 
 ###############################################################################
 # Additional internal variables.
@@ -47,15 +46,6 @@ SYNC_URI="rsync://rsync.us.gentoo.org/gentoo-portage" # URI for portage rsync.
 
 ###############################################################################
 # TODO Develop usage summary.
-#print_usage() {
-#	printf "%s\n" "Usage summary:"
-#	printf "\t%s\n" "-c <config>"
-#	printf "\t\t%s\n" "Specify a configuration file to use."
-#	printf "\t%s\n" "-d"
-#	printf "\t\t%s\n" "Download new copies of all files and update the cache."
-#	printf "\t%s\n" "-z"
-#	printf "\t\t%s\n" "Write zeros to the SD card before formatting."
-#}
 
 # Ensure we're running as root.
 if [ $(id -u) -ne 0 ]; then
@@ -65,9 +55,9 @@ fi
 
 # Verify mkpasswd is installed.
 if [ ! $(command -v mkpasswd) ]; then
-	printf "%s\n" "Error: The mkpasswd utility is not installed. Please"
-	printf "%s\n" "install it and try again. In many distributions, it"
-	printf "%s\n" "is part of the whois package."
+	printf "%s" "Error: The mkpasswd utility is not installed. Please "
+	printf "%s\n%s" "install it and try again." "In many distributions, "
+	printf "%s\n" "it is part of the whois package."
 	exit 1
 fi
 
@@ -81,7 +71,7 @@ fi
 mkdir -p cache
 # Download stage 3 tarball
 BASE_ADDRESS="http://distfiles.gentoo.org/releases/arm/autobuilds"
-if [ $PI_VERSION -eq 1 ]; then
+if [ $PI_VERSION -eq 0 ] || [ $PI_VERSION -eq 1 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv6j_hardfp.txt)
 elif [ $PI_VERSION -eq 2 ] || [ $PI_VERSION -eq 3 ]; then
 	STAGE3_RAW=$(curl -s $BASE_ADDRESS/latest-stage3-armv7a_hardfp.txt)
@@ -90,10 +80,11 @@ STAGE3_RAW=$(printf "%s" "$STAGE3_RAW" | tr '\n' ' ' | cut -d ' ' -f 13)
 STAGE3_DATE=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 1)
 STAGE3_TARBALL=$(printf "%s" "$STAGE3_RAW" | cut -d '/' -f 2)
 
+# TODO: Check GPG signature of files
 if [ -e "./cache/$STAGE3_TARBALL" ]; then
 	printf "%s\n" "Stage 3 tarball already downloaded, skipping"
 else
-	wget -P ./cache/ $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL cache/
+	wget -P ./cache/ $BASE_ADDRESS/$STAGE3_DATE/$STAGE3_TARBALL
 fi
 
 # Download Portage snapshot
@@ -158,36 +149,49 @@ sync
 printf "%s\n" "Adding kernel to image"
 cp -r cache/firmware/boot/* $ROOT_DIR/boot
 cp -r cache/firmware/modules $ROOT_DIR/lib/
-#echo "dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200
-#console=tty1 root=$SD$SD_ROOT rootfstype=ext4 elevator=deadline
-#rootwait" > $ROOT_DIR/boot/cmdline.txt
 touch $ROOT_DIR/boot/cmdline.txt
 printf "%s" "dwc_otg.lpm_enable=0 " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s" "console=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s" "kgdboc=ttyAMA0,115200 " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s" "console=tty1 " >> $ROOT_DIR/boot/cmdline.txt
-printf "%s" "root=%s " "$SD$SD_ROOT" >> $ROOT_DIR/boot/cmdline.txt
+printf "%s" "root=$SD$SD_ROOT " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s" "rootfstype=ext4 " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s" "elevator=deadline " >> $ROOT_DIR/boot/cmdline.txt
 printf "%s\n" "rootwait" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
-if [ $PI_VERSION -eq 1 ]; then
-	NEW_CFLAGS="-O2 -pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard"
-elif [ $PI_VERSION -eq 2 ] || [ $PI_VERSION -eq 3 ]; then
-	NEW_CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+if [ $PI_VERSION -eq 0 ] || [ $PI_VERSION -eq 1 ]; then
+	CFLAGS="-O2 -pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard"
+	CHOST="armv6j-hardfloat-linux-gnueabi"
+	MAKEOPTS="-j2"
+elif [ $PI_VERSION -eq 2 ]; then
+	CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+	CHOST="armv7a-hardfloat-linux-gnueabi"
+	MAKEOPTS="-j5"
 elif [ $PI_VERSION -eq 3 ]; then
-	#NEW_CFLAGS="-O2 -pipe -march=armv8-a -mtune=cortex-a53 -mfpu=neon-vfpv4 -mfloat-abi=hard"
-	# Use the Raspberry Pi 2 settings for now. Once a proper armv8-a
-	# stage 3 is available, this can be updated.
-	NEW_CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+	CFLAGS="-O2 -pipe -march=armv8a+crc -mtune=cortex-a53 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard"
+	# Gentoo does not have an armv8a stage3 available at this time.
+	CHOST="armv7a-hardfloat-linux-gnueabi"
+	MAKEOPTS="-j5"
 fi
-sed -i "s/CFLAGS=.*/${NEW_CFLAGS}/" $ROOT_DIR/etc/portage/make.conf
 
-printf "%s\n" "INPUT_DEVICES=\"evdev\"" >> $ROOT_DIR/etc/portage/make.conf
-printf "%s\n" "LINGUAS=\"en_US en\"" >> $ROOT_DIR/etc/portage/make.conf
-printf "%s\n" "MAKEOPTS=\"-j5\"" >> $ROOT_DIR/etc/portage/make.conf
-printf "%s\n" "PORTAGE_NICENESS=\"18\"" >> $ROOT_DIR/etc/portage/make.conf
+MAKE_CONF="$ROOT_DIR/etc/portage/make.conf"
+printf "%s\n" "CFLAGS=\"${CFLAGS}\"" > $MAKE_CONF
+printf "%s\n" "CXXFLAGS=\"\${CFLAGS}\"" >> $MAKE_CONF
+printf "%s\n\n" "CHOST=\"${CHOST}\"" >> $MAKE_CONF
+printf "%s\n\n" "USE=\"\"" >> $MAKE_CONF
+printf "%s\n" "INPUT_DEVICES=\"evdev\"" >> $MAKE_CONF
+printf "%s\n" "VIDEO_CARDS=\"vc4\"" >> $MAKE_CONF
+printf "%s\n" "LINGUAS=\"$LINGUAS\"" >> $MAKE_CONF
+printf "%s\n" "L10N=\"$L10N\"" >> $MAKE_CONF
+printf "%s\n" "MAKEOPTS=\"${MAKEOPTS}\"" >> $MAKE_CONF
+printf "%s\n" "PORTAGE_NICENESS=\"18\"" >> $MAKE_CONF
+printf "%s\n" "PORTDIR=\"/usr/portage\"" >> $MAKE_CONF
+printf "%s\n" "DISTDIR=\"/usr/portage/distfiles\"" >> $MAKE_CONF
+printf "%s\n" "PKGDIR=\"/usr/portage/packages\"" >> $MAKE_CONF
+printf "%s\n" "# This sets the language of build output to English." >> $MAKE_CONF
+printf "%s\n" "# Please keep this setting intact when reporting bugs." >> $MAKE_CONF
+printf "%s\n" "LC_MESSAGES=C" >> $MAKE_CONF
 
 # Create repos.conf
 mkdir -p $ROOT_DIR/etc/portage/repos.conf
