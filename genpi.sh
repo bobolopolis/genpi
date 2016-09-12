@@ -161,15 +161,19 @@ printf "%s\n" "rootwait" >> $ROOT_DIR/boot/cmdline.txt
 
 # Adjust make.conf
 if [ $PI_VERSION -eq 0 ] || [ $PI_VERSION -eq 1 ]; then
-	CFLAGS="-O2 -pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard"
+	CFLAGS="-O2 -pipe -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp"
+	CFLAGS="${CFLAGS} -mfloat-abi=hard -tree-vectorize"
 	CHOST="armv6j-hardfloat-linux-gnueabi"
 	MAKEOPTS="-j2"
 elif [ $PI_VERSION -eq 2 ]; then
-	CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+	CFLAGS="-O2 -pipe -march=armv7ve -mtune=cortex-a7 -mfpu=neon-vfpv4"
+	CFLAGS="${CFLAGS} -mfloat-abi=hard -ftree-vectorize"
 	CHOST="armv7a-hardfloat-linux-gnueabi"
 	MAKEOPTS="-j5"
 elif [ $PI_VERSION -eq 3 ]; then
-	CFLAGS="-O2 -pipe -march=armv8a+crc -mtune=cortex-a53 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard"
+	CFLAGS="-O2 -pipe -march=armv8a+crc -mtune=cortex-a53"
+	CFLAGS="${CFLAGS} -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard"
+	CFLAGS="${CFLAGS} -ftree-vectorize"
 	# Gentoo does not have an armv8a stage3 available at this time.
 	CHOST="armv7a-hardfloat-linux-gnueabi"
 	MAKEOPTS="-j5"
