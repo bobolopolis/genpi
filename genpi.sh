@@ -122,11 +122,11 @@ parted -s $SD mkpart primary ${ROOT_START}MiB $ROOT_END
 
 # Format SD card
 printf "%s\n" "Formatting $SD$SD_BOOT"
-mkfs.vfat $SD$SD_BOOT
+mkfs.vfat -n RPI-BOOT $SD$SD_BOOT
 printf "%s\n" "Formatting $SD$SD_SWAP"
 mkswap $SD$SD_SWAP
 printf "%s\n" "Formatting $SD$SD_ROOT"
-mkfs.ext4 -q $SD$SD_ROOT
+mkfs.ext4 -q -L rpi-root $SD$SD_ROOT
 
 # Mount SD card
 printf "%s\n" "Mounting $SD$SD_ROOT at $ROOT_DIR"
