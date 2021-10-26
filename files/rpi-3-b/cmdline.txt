@@ -1,0 +1,1 @@
+root=/dev/mmcblk0p3 rootwait cma=256M@256M

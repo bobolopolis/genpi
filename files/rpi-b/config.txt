@@ -1,0 +1,13 @@
+# Enable VC4 hardware accelerated video
+dtoverlay=vc4-fkms-v3d
+
+# Enable sound over HDMI
+hdmi_drive=2
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+# gpu_mem is for closed source driver only. Since we are using the open
+# source driver, set it low.
+gpu_mem=16
+

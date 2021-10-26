@@ -1,0 +1,1 @@
+root=REPLACEME rootfstype=REPLACEME rootwait
